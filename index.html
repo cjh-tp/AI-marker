@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Marker CV Upload</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 760px;
+        margin: 40px auto;
+        padding: 20px;
+        line-height: 1.5;
+      }
+      form {
+        display: grid;
+        gap: 12px;
+      }
+      input, textarea, button {
+        padding: 10px;
+        font-size: 16px;
+      }
+      pre {
+        white-space: pre-wrap;
+        background: #f4f4f4;
+        padding: 12px;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Computer Vision to AI Marker</h1>
+    <p>Upload a student worksheet image and send it to your FastAPI grading endpoint.</p>
+
+    <form id="upload-form">
+      <label>
+        Image
+        <input type="file" id="image" name="image" accept="image/*" required />
+      </label>
+
+      <label>
+        Question
+        <textarea id="question" name="question" rows="3" required></textarea>
+      </label>
+
+      <label>
+        Mark Scheme
+        <textarea id="markScheme" name="markScheme" rows="4" required></textarea>
+      </label>
+
+      <button type="submit">Analyze and Grade</button>
+    </form>
+
+    <h2>Result</h2>
+    <pre id="result">Waiting for input...</pre>
+
+    <script>
+      const form = document.getElementById('upload-form');
+      const resultBox = document.getElementById('result');
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const formData = new FormData();
+        formData.append('image', document.getElementById('image').files[0]);
+        formData.append('question', document.getElementById('question').value);
+        formData.append('markScheme', document.getElementById('markScheme').value);
+
+        resultBox.textContent = 'Sending image to the API...';
+
+        try {
+          const response = await fetch('http://127.0.0.1:8000/analyze-image', {
+            method: 'POST',
+            body: formData,
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.detail || 'Request failed');
+          }
+
+          resultBox.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          resultBox.textContent = `Error: ${error.message}`;
+        }
+      });
+    </script>
+  </body>
+</html>
