@@ -1,62 +1,94 @@
-import os
 from pathlib import Path
-from dotenv import load_dotenv
+import json
 from google import genai
+from google.genai import types
 
-load_dotenv()
+# -----------------------------
+# Gemini Client
+# -----------------------------
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
-)
+client = genai.Client()
 
-def read_math_paper(image_path: str):
+MODEL = "gemini-2.5-flash"
 
-    image = Path(image_path)
+# -----------------------------
+# Vision Function
+# -----------------------------
 
-    if not image.exists():
-        raise FileNotFoundError(image)
+def analyse_page(image_path: str):
+
+    image_file = Path(image_path)
+
+    if not image_file.exists():
+        raise FileNotFoundError(image_file)
+
+    uploaded_file = client.files.upload(
+        file=image_file
+    )
 
     prompt = """
-You are an OCR system specialised in handwritten mathematics.
+You are an AI computer vision system for mathematics assessments.
 
-Your task:
+Your job is NOT to grade.
 
-1. Read ALL visible handwritten text.
-2. Preserve the student's working.
-3. Preserve mathematical notation.
-4. Do NOT grade.
-5. Do NOT correct mistakes.
+Your ONLY job is to understand the page.
+
+Read EVERYTHING visible.
+
+Identify:
+
+- Question number
+- Question text
+- Student working
+- Final answer
+- Tables
+- Mathematical equations
+- Diagrams (if any)
 
 Return ONLY JSON.
 
-Format:
+Schema:
 
 {
-  "transcription":[
-    {
-      "line":1,
-      "text":"..."
-    }
-  ]
+    "question_detected": "",
+    "student_working": [],
+    "final_answer": "",
+    "equations": [],
+    "tables": [],
+    "notes": []
 }
 """
 
-    uploaded = client.files.upload(file=image)
-
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+
+        model=MODEL,
+
         contents=[
-            uploaded,
+            uploaded_file,
             prompt
-        ]
+        ],
+
+        config=types.GenerateContentConfig(
+
+            temperature=0,
+
+            response_mime_type="application/json"
+
+        )
+
     )
 
-    return response.text
+    if response.text is None:
+        raise ValueError("Gemini returned an empty response.")
+
+    return json.loads(response.text)
+
+# -----------------------------
+# Test
+# -----------------------------
 
 if __name__ == "__main__":
 
-    result = read_math_paper(
-        "images/test_photo.png"
-    )
+    result = analyse_page("../images/current_page.png")
 
-    print(result)
+    print(json.dumps(result, indent=4))
